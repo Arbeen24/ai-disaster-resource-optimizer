@@ -1,43 +1,46 @@
-# 🌍 AI Disaster Resource Optimizer
+🌍 AI Disaster Resource Optimizer
 
-## 📌 Problem Statement
-Efficient allocation of resources during disasters is a major challenge, leading to delays and loss of lives.
+🔗 Live App: https://ai-disaster-resource-optimizer-cuem4vunqmwgwxqbhjjlse.streamlit.app/
 
-## 💡 Solution
-This project uses AI to optimize disaster resource allocation by matching available resources with urgent needs in real-time.
+📌 Problem Statement
+Efficient allocation of resources during disasters is a major challenge, often causing delays, mismanagement, and loss of lives. There is a need for a smart system that can prioritize and distribute resources effectively in real-time.
 
-## 🚀 Features
-- Smart donor/resource matching
-- Priority-based allocation
-- Real-time data handling
-- AI-powered decision support
+💡 Solution
+This project presents an intelligent system that optimizes disaster resource allocation by matching available resources (donors) with urgent needs. It ensures faster, smarter, and priority-based distribution during critical situations.
 
-## 🛠️ Tech Stack
-- Python
-- Streamlit (if used)
-- Google AI API (Gemini)
+🚀 Features
 
-## ▶️ How to Run
+* Smart donor/resource matching
+* Priority-based allocation system
+* Real-time data handling
+* Decision-support system for optimized allocation
+
+🛠️ Tech Stack
+
+* Python
+* Streamlit
+
+🤖 AI Integration Attempt
+I attempted to integrate the Google Gemini API to enhance the application with AI-based decision-making. However, during implementation, I encountered repeated API-related errors such as model access issues and configuration limitations. Despite multiple attempts to resolve them, the integration could not be completed within the given time.
+
+To ensure the project remains functional and reliable, I implemented a rule-based intelligent system for resource prioritization and allocation. This allows the application to perform efficient matching and decision support even without the API.
+
+The Gemini API integration is planned as a future enhancement to further improve prediction accuracy and real-time decision-making capabilities.
+
+▶️ How to Run
+
 1. Clone the repository
 2. Install dependencies:
-   ```
    pip install -r requirements.txt
-   ```
-3. Run:
-   ```
-   python app.py
-   ```
+3. Run the application:
+   streamlit run app.py
 
-## 🔑 Note
-Replace API key with your own:
-```
-API_KEY = "YOUR_API_KEY_HERE"
-```
+📈 Future Enhancements
 
-## 📈 Future Enhancements
-- Live map integration
-- Real-time alerts
-- Mobile app version
+* Integration with Google Gemini API
+* Live map integration for resource tracking
+* Real-time alerts and notifications
+* Mobile application support
 
-## 👤 Author
+👤 Author
 Arbeen Arif

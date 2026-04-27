@@ -24,32 +24,34 @@ def get_ai_response(prompt):
     except:
         return {"status": "error"}
 
-# ================= CSS FIXED =================
+# ================= CSS (FIXED FOR LIGHT + DARK) =================
 st.markdown("""
 <style>
 .card {
-    background: rgba(255,255,255,0.08);
     padding: 20px;
     border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.2);
-    backdrop-filter: blur(12px);
-    transition: all 0.3s ease;
-    color: white;
+    border: 1px solid rgba(0,0,0,0.1);
+    transition: 0.3s ease;
+    background: rgba(255,255,255,0.7);
+    color: black;
 }
 
-/* FORCE TEXT VISIBLE */
-.card h3, .card p {
-    color: white;
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .card {
+        background: rgba(255,255,255,0.08);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
 }
 
-/* HOVER */
+/* Hover */
 .card:hover {
     transform: translateY(-8px) scale(1.02);
-    border: 1px solid rgba(0,255,200,0.7);
-    box-shadow: 0 0 25px rgba(0,255,200,0.4);
+    box-shadow: 0 0 20px rgba(0,255,200,0.3);
 }
 
-/* BEST CARD */
+/* Best card */
 .best {
     border: 2px solid #00ffcc;
 }
@@ -89,6 +91,39 @@ st.warning("⚠️ Every second matters in disaster response.")
 
 st.success(f"🚀 Best Match: {best['name']}")
 
+# ================= 🔥 AI FEATURE BUTTONS (ADDED BACK) =================
+st.markdown("## 🤖 AI Insights")
+
+if st.button("🤖 Why this is Best?"):
+    prompt = f"Why is {best['name']} best? Capacity {best['capacity']} Needed {people_needed}"
+    result = get_ai_response(prompt)
+
+    if result["status"] == "success":
+        st.success(result["data"])
+    else:
+        st.warning("⚠️ Gemini API issue → fallback used")
+        st.info("Selected based on highest capacity and demand match.")
+
+if st.button("🧠 Generate Disaster Plan"):
+    prompt = f"Disaster plan for {location}, {people_needed} people, urgency {urgency}"
+    result = get_ai_response(prompt)
+
+    if result["status"] == "success":
+        st.success(result["data"])
+    else:
+        st.warning("⚠️ Gemini API issue → fallback used")
+        st.info("Deploy resources, prioritize critical zones, monitor continuously.")
+
+if st.button("⚠️ Risk Analysis"):
+    prompt = f"Risk if capacity is insufficient. Needed {people_needed}"
+    result = get_ai_response(prompt)
+
+    if result["status"] == "success":
+        st.error(result["data"])
+    else:
+        st.warning("⚠️ Gemini API issue → fallback used")
+        st.error("High risk due to limited resources.")
+
 # ================= CARDS =================
 st.subheader("🏆 Deployment Options")
 
@@ -97,15 +132,12 @@ cols = st.columns(3)
 for i, (_, row) in enumerate(df.head(3).iterrows()):
     with cols[i]:
 
-        # store state
         key = f"ai_{i}"
         if key not in st.session_state:
             st.session_state[key] = None
 
-        # BEST CARD HIGHLIGHT
         card_class = "card best" if row["name"] == best["name"] else "card"
 
-        # CARD CONTENT (ONLY TEXT)
         st.markdown(f"""
         <div class="{card_class}">
             <h3>{row['name']}</h3>
@@ -113,13 +145,11 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
         </div>
         """, unsafe_allow_html=True)
 
-        # STATUS (OUTSIDE CARD → IMPORTANT)
         if row["capacity"] >= people_needed:
             st.success("🟢 Sufficient Capacity")
         else:
             st.error("🔴 Not Enough Capacity")
 
-        # BUTTON
         if st.button("✨ Explain", key=f"btn_{i}"):
 
             prompt = f"""
@@ -137,14 +167,11 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
                 st.session_state[key] = f"""
 ⚠️ Gemini API issue → fallback used
 
-📊 Capacity: {row['capacity']} | Needed: {people_needed}
+Capacity: {row['capacity']} | Needed: {people_needed}
 
-{"🟢 Sufficient capacity" if row['capacity'] >= people_needed else "🔴 Insufficient capacity"}
-
-🚀 Recommendation: {"Deploy" if row['capacity'] >= people_needed else "Use multiple hubs"}
+{"Sufficient" if row['capacity'] >= people_needed else "Insufficient"}
 """
 
-        # SHOW RESULT ONLY AFTER CLICK
         if st.session_state[key]:
             st.info(st.session_state[key])
 

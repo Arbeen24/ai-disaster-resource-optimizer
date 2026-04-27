@@ -67,7 +67,9 @@ location = st.sidebar.selectbox("Location", [
     "Delhi","Kolkata","Pune","Ahmedabad"
 ])
 
-resource_type = st.sidebar.selectbox("Resource Type", ["Shelter","Medical","Food"])
+# ✅ ADDED VOLUNTEERS HERE
+resource_type = st.sidebar.selectbox("Resource Type", ["Shelter","Medical","Food","Volunteers"])
+
 urgency = st.sidebar.selectbox("Urgency", ["Low","Medium","High"])
 people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
 
@@ -76,7 +78,8 @@ data = []
 for i in range(1,6):
     data.append({
         "name": f"{location} {resource_type} Hub {i}",
-        "capacity": random.randint(60,200)
+        "capacity": random.randint(60,200),
+        "volunteers": random.randint(20,150)   # ✅ NEW FIELD
     })
 
 df = pd.DataFrame(data)
@@ -135,6 +138,7 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
         <div class="{card_class}">
             <h3>{row['name']}</h3>
             <p>👥 Capacity: {row['capacity']}</p>
+            <p>🧑‍🚒 Volunteers: {row['volunteers']}</p>   <!-- ✅ ADDED -->
         </div>
         """, unsafe_allow_html=True)
 
@@ -144,11 +148,17 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
         else:
             st.error("🔴 Not Enough Capacity")
 
+        # Volunteers status (NEW)
+        if row["volunteers"] >= people_needed * 0.5:
+            st.success("🧑‍🚒 Enough Volunteers")
+        else:
+            st.warning("⚠️ Limited Volunteers")
+
         # Explain button
         if st.button("✨ Explain", key=f"btn_{i}"):
 
             result = get_ai_response(
-                f"Explain why {row['name']} is suitable. Capacity {row['capacity']}, needed {people_needed}"
+                f"Explain why {row['name']} is suitable. Capacity {row['capacity']}, volunteers {row['volunteers']}, needed {people_needed}"
             )
 
             if result["status"] == "success":
@@ -157,20 +167,19 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
                 st.session_state[key] = f"""
 ⚠️ Gemini API quota exceeded / unavailable
 
-Fallback Analysis:
 Capacity: {row['capacity']}
+Volunteers: {row['volunteers']}
 Needed: {people_needed}
 
 {"✔️ Sufficient capacity" if row["capacity"] >= people_needed else "❌ Not sufficient"}
 """
 
-        # SHOW ONLY AFTER CLICK (FIXED BUG)
         if st.session_state[key]:
             st.info(st.session_state[key])
 
 # ================= CHART =================
 st.subheader("📊 Resource Distribution")
-st.bar_chart(df.set_index("name")["capacity"])
+st.bar_chart(df.set_index("name")[["capacity","volunteers"]])  # ✅ UPDATED
 
 # ================= TABLE =================
 st.subheader("📋 Available Resource Providers")

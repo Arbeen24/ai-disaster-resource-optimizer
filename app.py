@@ -24,6 +24,41 @@ def get_ai_response(prompt):
     except:
         return {"status": "error"}
 
+# ================= CSS FIX =================
+st.markdown("""
+<style>
+.card {
+    padding: 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(0,0,0,0.15);
+    transition: 0.3s ease;
+    background: rgba(255,255,255,0.85);
+    color: #111111 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .card {
+        background: rgba(255,255,255,0.08);
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+}
+
+.card h3, .card p {
+    color: inherit !important;
+}
+
+.card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 0 25px rgba(0,255,200,0.35);
+}
+
+.best {
+    border: 2px solid #00ffcc;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ================= SIDEBAR =================
 st.sidebar.title("🎯 Disaster Input Panel")
 
@@ -63,7 +98,7 @@ if st.button("🤖 Why this is Best?"):
     if result["status"] == "success":
         st.success(result["data"])
     else:
-        st.warning("⚠️ Gemini API issue → fallback used")
+        st.warning("⚠️ Gemini API issue → showing fallback")
         st.info("Selected based on highest capacity and demand match.")
 
 if st.button("🧠 Generate Disaster Plan"):
@@ -71,7 +106,7 @@ if st.button("🧠 Generate Disaster Plan"):
     if result["status"] == "success":
         st.success(result["data"])
     else:
-        st.warning("⚠️ Gemini API issue → fallback used")
+        st.warning("⚠️ Gemini API issue → showing fallback")
         st.info("Deploy resources, prioritize critical zones, monitor continuously.")
 
 if st.button("⚠️ Risk Analysis"):
@@ -79,10 +114,10 @@ if st.button("⚠️ Risk Analysis"):
     if result["status"] == "success":
         st.error(result["data"])
     else:
-        st.warning("⚠️ Gemini API issue → fallback used")
+        st.warning("⚠️ Gemini API issue → showing fallback")
         st.error("High risk due to insufficient resources.")
 
-# ================= CARDS (FIXED VERSION) =================
+# ================= CARDS =================
 st.subheader("🏆 Deployment Options")
 
 cols = st.columns(3)
@@ -94,24 +129,14 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
         if key not in st.session_state:
             st.session_state[key] = None
 
-        # Card container (UI)
-        border = "#00ffcc" if row["name"] == best["name"] else "rgba(0,0,0,0.2)"
+        card_class = "card best" if row["name"] == best["name"] else "card"
 
         st.markdown(f"""
-        <div style="
-            padding:20px;
-            border-radius:18px;
-            border:2px solid {border};
-            background:rgba(255,255,255,0.6);
-            backdrop-filter:blur(10px);
-        ">
+        <div class="{card_class}">
+            <h3>{row['name']}</h3>
+            <p>👥 Capacity: {row['capacity']}</p>
+        </div>
         """, unsafe_allow_html=True)
-
-        # TEXT via Streamlit (fixes invisibility)
-        st.markdown(f"### {row['name']}")
-        st.write(f"👥 Capacity: {row['capacity']}")
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
         # Capacity status
         if row["capacity"] >= people_needed:
@@ -132,12 +157,14 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
                 st.session_state[key] = f"""
 ⚠️ Gemini API quota exceeded / unavailable
 
+Fallback Analysis:
 Capacity: {row['capacity']}
 Needed: {people_needed}
 
 {"✔️ Sufficient capacity" if row["capacity"] >= people_needed else "❌ Not sufficient"}
 """
 
+        # SHOW ONLY AFTER CLICK (FIXED BUG)
         if st.session_state[key]:
             st.info(st.session_state[key])
 

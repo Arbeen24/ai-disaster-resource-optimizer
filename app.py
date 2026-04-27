@@ -1,196 +1,175 @@
 import streamlit as st
 import pandas as pd
 import random
-import google.generativeai as genai
 
-# -------------------------
+# ==============================
+# GEMINI SETUP
+# ==============================
+AI_AVAILABLE = False
+
+try:
+    import google.generativeai as genai
+
+    if "GEMINI_API_KEY" in st.secrets:
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        AI_AVAILABLE = True
+except:
+    AI_AVAILABLE = False
+
+# ==============================
 # PAGE CONFIG
-# -------------------------
+# ==============================
 st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
-# -------------------------
-# CUSTOM CSS (GLASS UI 🔥)
-# -------------------------
+# ==============================
+# GLASS UI
+# ==============================
 st.markdown("""
 <style>
 body {
     background-color: #0e1117;
+    color: white;
 }
 .glass {
-    backdrop-filter: blur(14px);
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.08);
     border-radius: 15px;
     padding: 20px;
+    backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,0.1);
+}
+.card:hover {
+    transform: scale(1.03);
     transition: 0.3s;
-}
-.glass:hover {
-    transform: translateY(-5px);
-    border: 1px solid rgba(255,255,255,0.3);
-}
-.ai-box {
-    background: rgba(255,255,255,0.08);
-    padding: 15px;
-    border-radius: 10px;
-    margin-top: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------------
-# GEMINI SETUP
-# -------------------------
-try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    AI_AVAILABLE = True
-except:
-    AI_AVAILABLE = False
-
-# -------------------------
-# DATASET
-# -------------------------
-cities = ["Bangalore", "Mumbai", "Chennai", "Hyderabad"]
-types = ["Shelter", "Medical", "Food", "Rescue"]
-
-data = []
-for city in cities:
-    for t in types:
-        for i in range(1, 5):
-            data.append({
-                "name": f"{city} {t} Hub {i}",
-                "type": t,
-                "location": city,
-                "capacity": random.randint(50, 200)
-            })
-
-df = pd.DataFrame(data)
-
-# -------------------------
-# SIDEBAR
-# -------------------------
+# ==============================
+# SIDEBAR INPUT
+# ==============================
 st.sidebar.title("🎯 Disaster Input Panel")
 
-location = st.sidebar.selectbox("Location", df["location"].unique())
-resource_type = st.sidebar.selectbox("Resource Type", types)
+location = st.sidebar.selectbox("Location", ["Bangalore", "Mumbai", "Chennai"])
+resource_type = st.sidebar.selectbox("Resource Type", ["Shelter", "Medical", "Food"])
 urgency = st.sidebar.selectbox("Urgency", ["Low", "Medium", "High"])
 people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
 
-# -------------------------
-# LOGIC
-# -------------------------
-filtered = df[
-    (df["location"] == location) &
-    (df["type"] == resource_type)
-].copy()
+# ==============================
+# DUMMY DATA
+# ==============================
+data = []
+for i in range(1, 6):
+    data.append({
+        "name": f"{location} {resource_type} Hub {i}",
+        "location": location,
+        "capacity": random.randint(60, 200)
+    })
 
-urgency_weight = {"Low": 1, "Medium": 2, "High": 3}
+df = pd.DataFrame(data)
 
-filtered["score"] = (
-    filtered["capacity"]
-    - people_needed
-    + urgency_weight[urgency] * 25
-)
+# ==============================
+# SCORING LOGIC
+# ==============================
+def calculate_score(row):
+    score = row["capacity"]
 
-sorted_df = filtered.sort_values(by="score", ascending=False)
-best = sorted_df.iloc[0]
+    if urgency == "High":
+        score += 30
+    elif urgency == "Medium":
+        score += 15
 
-# -------------------------
+    if row["capacity"] >= people_needed:
+        score += 40
+    else:
+        score -= 20
+
+    return score
+
+df["score"] = df.apply(calculate_score, axis=1)
+df = df.sort_values(by="score", ascending=False)
+
+# ==============================
 # HEADER
-# -------------------------
+# ==============================
 st.title("🚨 AI Disaster Resource Optimizer")
+
 st.warning("Every second matters in disaster response. Choose wisely.")
 
-# -------------------------
-# BEST MATCH
-# -------------------------
-st.markdown(f"""
-<div class="glass" style="background: linear-gradient(135deg,#00c6ff,#0072ff); color:white;">
-🚀 <b>Best Match:</b> {best['name']}
-</div>
-""", unsafe_allow_html=True)
+best = df.iloc[0]
+st.success(f"🚀 Best Match: {best['name']}")
 
-# -------------------------
-# CARDS + AI
-# -------------------------
+# ==============================
+# CARDS
+# ==============================
 st.subheader("🏆 Deployment Options")
 
 cols = st.columns(3)
 
-for i, (_, row) in enumerate(sorted_df.head(3).iterrows()):
+for i, (_, row) in enumerate(df.head(3).iterrows()):
     with cols[i]:
 
-        # Capacity status
-        if people_needed > row["capacity"]:
-            status = "🔴 Cannot handle required people"
-            color = "#ff4d4d"
-        elif row["capacity"] - people_needed < 25:
-            status = "🟡 Limited capacity"
-            color = "#ffc107"
-        else:
-            status = "🟢 Sufficient capacity"
-            color = "#28a745"
+        status = "🟢 Sufficient capacity" if row["capacity"] >= people_needed else "🔴 Not enough capacity"
 
-        key = f"ai_{i}"
-
-        # CARD
         st.markdown(f"""
-        <div class="glass">
-        <h3>{row['name']}</h3>
-        <p>📍 {row['location']}</p>
-        <p>👥 Capacity: {row['capacity']}</p>
-        <p style="color:{color}; font-weight:bold;">{status}</p>
+        <div class="glass card">
+            <h3>{row['name']}</h3>
+            📍 {row['location']} <br>
+            👥 Capacity: {row['capacity']} <br><br>
+            <b>{status}</b>
         </div>
         """, unsafe_allow_html=True)
 
-        # BUTTON
-        if st.button("✨ Explain", key=f"btn_{i}"):
+        key = f"ai_{i}"
+
+        if key not in st.session_state:
+            st.session_state[key] = ""
+
+        if st.button(f"✨ Explain", key=f"btn_{i}"):
 
             if AI_AVAILABLE:
                 try:
                     prompt = f"""
-                    You are an AI disaster response assistant.
-
-                    Resource:
-                    {row['name']}
-
+                    Disaster resource allocation:
+                    Location: {location}
+                    Resource: {row['name']}
                     Capacity: {row['capacity']}
-                    People Needed: {people_needed}
+                    People needed: {people_needed}
                     Urgency: {urgency}
 
-                    Answer clearly:
-                    1. Can it handle?
-                    2. Should deploy?
-                    3. Any risks?
-
-                    Keep it short and practical.
+                    Give a short decision explanation.
                     """
 
                     response = model.generate_content(prompt)
                     st.session_state[key] = response.text
 
                 except:
-                    st.session_state[key] = "⚠️ AI quota exceeded or error."
+                    st.session_state[key] = f"""
+⚠️ AI busy (quota)
+📊 Capacity: {row['capacity']}
+✅ Recommended based on availability
+"""
 
             else:
-                st.session_state[key] = "⚠️ AI not configured."
+                st.session_state[key] = f"""
+⚠️ AI not configured
+📊 Capacity: {row['capacity']}
+✅ Suitable based on logic
+"""
 
-        # SHOW AI RESULT
-        if key in st.session_state:
-            st.markdown(f"""
-            <div class="ai-box">
-            🤖 {st.session_state[key]}
-            </div>
-            """, unsafe_allow_html=True)
+        if st.session_state[key]:
+            st.info(st.session_state[key])
 
-# -------------------------
+# ==============================
 # CHART
-# -------------------------
+# ==============================
 st.subheader(f"📊 Resource Distribution in {location}")
-st.bar_chart(sorted_df.head(5).set_index("name")["capacity"])
 
-# -------------------------
+chart_data = df.head(5).set_index("name")["capacity"]
+st.bar_chart(chart_data)
+
+# ==============================
 # TABLE
-# -------------------------
+# ==============================
 st.subheader("📋 Available Resource Providers")
-st.dataframe(sorted_df)
+st.dataframe(df)

@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 import random
+import time
 import google.generativeai as genai
 import os
 
 # ----------------------------
-# 🔑 GEMINI CONFIG (SECURE)
+# 🔑 CONFIGURE GEMINI (SECURE)
 # ----------------------------
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash")
@@ -13,7 +14,7 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
 # ----------------------------
-# 🎨 UI STYLE
+# 🎨 GLASS UI STYLING
 # ----------------------------
 st.markdown("""
 <style>
@@ -21,10 +22,24 @@ st.markdown("""
     background: linear-gradient(135deg, #0E1117, #1a1f2b);
     color: white;
 }
+
+.card {
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(10px);
+    border-radius:15px;
+    padding:15px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
 .hero {
     background: rgba(0, 201, 167, 0.15);
-    padding: 20px;
-    border-radius: 12px;
+    border-radius:15px;
+    padding:25px;
+    border:1px solid rgba(0,201,167,0.4);
+}
+
+h1, h2, h3 {
+    color: #00C9A7;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -33,8 +48,8 @@ st.markdown("""
 # 📊 DATA
 # ----------------------------
 def get_donors():
-    cities = ["Bangalore", "Mumbai", "Delhi", "Chennai", "Hyderabad", "Ahmedabad"]
-    types = ["Shelter", "Food", "Medical", "Volunteers"]
+    cities = ["Bangalore","Mumbai","Delhi","Chennai","Hyderabad","Ahmedabad"]
+    types = ["Shelter","Food","Medical","Volunteers"]
 
     data = []
     for city in cities:
@@ -44,12 +59,12 @@ def get_donors():
                     "name": f"{city} {t} Hub {i+1}",
                     "type": t,
                     "location": city,
-                    "capacity": random.randint(50, 200)
+                    "capacity": random.randint(50,200)
                 })
     return pd.DataFrame(data)
 
 # ----------------------------
-# 🤖 AI FUNCTION (CACHED)
+# 🤖 AI (CACHED + FALLBACK)
 # ----------------------------
 @st.cache_data(show_spinner=False)
 def get_ai_cached(prompt):
@@ -59,21 +74,20 @@ def get_ai_cached(prompt):
     except:
         return None
 
-
 def get_ai_explanation(donor, people_needed):
     prompt = f"""
     Resource: {donor['name']}
     Type: {donor['type']}
-    Location: {donor['location']}
+    City: {donor['location']}
     Capacity: {donor['capacity']}
     Demand: {people_needed}
 
-    Explain suitability, risks, and recommendation.
+    Explain suitability, risk, and recommendation.
     """
 
     result = get_ai_cached(prompt)
 
-    # ✅ IF AI WORKS
+    # ✅ AI WORKING
     if result:
         return f"""
         <div style="
@@ -87,7 +101,7 @@ def get_ai_explanation(donor, people_needed):
         </div>
         """
 
-    # ⚠️ FALLBACK UI (MATCHES YOUR WARNING STYLE)
+    # ⚠️ FALLBACK UI
     else:
         return f"""
         <div style="
@@ -96,13 +110,18 @@ def get_ai_explanation(donor, people_needed):
             padding: 16px;
             border-radius: 10px;
             border-left: 6px solid #f59e0b;
-            margin-top: 10px;
         ">
-            <b>⚠️ AI temporarily unavailable (quota limit)</b><br><br>
-            
-            📊 <b>Smart Suggestion:</b> {donor['name']} can support {donor['capacity']} people.<br><br>
-            
-            ✅ <b>Recommendation:</b> Deploy based on capacity and location.
+            ⚠️ <b>AI temporarily unavailable (quota limit)</b><br><br>
+
+            <div style="
+                background-color:#f3f4f6;
+                padding:10px;
+                border-radius:8px;
+                color:black;
+            ">
+                📊 <b>Smart Suggestion:</b> {donor['name']} can support {donor['capacity']} people.<br><br>
+                ✅ <b>Recommendation:</b> Deploy based on capacity and location.
+            </div>
         </div>
         """
 
@@ -118,8 +137,8 @@ st.sidebar.title("🎯 Disaster Input Panel")
 
 location = st.sidebar.selectbox("Location", df["location"].unique())
 resource_type = st.sidebar.selectbox("Resource Type", df["type"].unique())
-urgency = st.sidebar.selectbox("Urgency", ["Low", "Medium", "High"])
-people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
+urgency = st.sidebar.selectbox("Urgency", ["Low","Medium","High"])
+people_needed = st.sidebar.slider("People Needed", 10,200,50)
 
 # ----------------------------
 # FILTER + SCORE
@@ -139,7 +158,7 @@ filtered["score"] = filtered.apply(score, axis=1)
 sorted_df = filtered.sort_values(by="score", ascending=False)
 
 # ----------------------------
-# MAIN UI
+# HEADER
 # ----------------------------
 st.title("🚨 AI Disaster Resource Optimizer")
 
@@ -158,12 +177,29 @@ st.subheader("🏆 Deployment Options")
 
 for _, row in sorted_df.head(3).iterrows():
     st.write(f"### {row['name']}")
-    st.progress(row["score"] / 100)
+    st.progress(row["score"]/100)
 
     if st.button(f"🤖 Explain - {row['name']}"):
         st.markdown(get_ai_explanation(row, people_needed), unsafe_allow_html=True)
 
 # ----------------------------
+# 📊 CHART (UPDATED)
+# ----------------------------
+st.subheader(f"📊 Resource Distribution in {location}")
+
+city_data = df[df["location"] == location]
+
+chart_data = (
+    city_data.groupby("type")["capacity"]
+    .sum()
+    .reset_index()
+    .set_index("type")
+)
+
+st.bar_chart(chart_data, width="stretch")  # ✅ updated
+
+# ----------------------------
 # TABLE
 # ----------------------------
-st.dataframe(sorted_df)
+st.subheader("📋 Available Providers")
+st.dataframe(sorted_df, width="stretch")

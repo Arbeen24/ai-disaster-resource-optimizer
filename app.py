@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 import random
-import time
 import google.generativeai as genai
 import os
 
 # ----------------------------
-# 🔑 CONFIGURE GEMINI (SECURE)
+# 🔑 GEMINI CONFIG (SECURE)
 # ----------------------------
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash")
@@ -14,7 +13,7 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
 # ----------------------------
-# 🎨 UI STYLING
+# 🎨 UI STYLE
 # ----------------------------
 st.markdown("""
 <style>
@@ -22,24 +21,10 @@ st.markdown("""
     background: linear-gradient(135deg, #0E1117, #1a1f2b);
     color: white;
 }
-.block-container {
-    padding-top: 2rem;
-}
-.card {
-    background: rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(10px);
-    border-radius:15px;
-    padding:15px;
-    border: 1px solid rgba(255,255,255,0.2);
-}
 .hero {
     background: rgba(0, 201, 167, 0.15);
-    backdrop-filter: blur(15px);
-    border-radius:15px;
-    padding:25px;
-}
-h1, h2, h3 {
-    color: #00C9A7;
+    padding: 20px;
+    border-radius: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -48,84 +33,78 @@ h1, h2, h3 {
 # 📊 DATA
 # ----------------------------
 def get_donors():
-    city_profiles = {
-        "Bangalore": ["Medical", "Volunteers", "Food"],
-        "Mumbai": ["Food", "Shelter"],
-        "Delhi": ["Volunteers", "Shelter"],
-        "Chennai": ["Medical", "Food"],
-        "Hyderabad": ["Food", "Shelter"],
-        "Kolkata": ["Medical", "Volunteers"],
-        "Pune": ["Food", "Volunteers"],
-        "Ahmedabad": ["Shelter", "Food"],
-        "Jaipur": ["Shelter"],
-        "Lucknow": ["Food"],
-    }
+    cities = ["Bangalore", "Mumbai", "Delhi", "Chennai", "Hyderabad", "Ahmedabad"]
+    types = ["Shelter", "Food", "Medical", "Volunteers"]
 
-    all_types = ["Shelter", "Food", "Blood", "Volunteers", "Medical"]
-    donors = []
-
-    for city, strong_types in city_profiles.items():
-        for t in strong_types:
+    data = []
+    for city in cities:
+        for t in types:
             for i in range(2):
-                donors.append({
+                data.append({
                     "name": f"{city} {t} Hub {i+1}",
                     "type": t,
                     "location": city,
-                    "capacity": random.randint(120, 200)
+                    "capacity": random.randint(50, 200)
                 })
-
-        weak_types = [t for t in all_types if t not in strong_types]
-        for t in weak_types:
-            donors.append({
-                "name": f"{city} {t} Support",
-                "type": t,
-                "location": city,
-                "capacity": random.randint(30, 80)
-            })
-
-    return pd.DataFrame(donors)
+    return pd.DataFrame(data)
 
 # ----------------------------
-# 🤖 AI (CACHED + FALLBACK)
+# 🤖 AI FUNCTION (CACHED)
 # ----------------------------
 @st.cache_data(show_spinner=False)
-def get_ai_explanation_cached(prompt):
+def get_ai_cached(prompt):
     try:
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception:
+        res = model.generate_content(prompt)
+        return res.text
+    except:
         return None
 
 
 def get_ai_explanation(donor, people_needed):
     prompt = f"""
-    You are an intelligent disaster response AI.
-
     Resource: {donor['name']}
     Type: {donor['type']}
-    City: {donor['location']}
+    Location: {donor['location']}
     Capacity: {donor['capacity']}
     Demand: {people_needed}
 
-    Give:
-    - Suitability
-    - Risk
-    - Final recommendation
+    Explain suitability, risks, and recommendation.
     """
 
-    result = get_ai_explanation_cached(prompt)
+    result = get_ai_cached(prompt)
 
+    # ✅ IF AI WORKS
     if result:
-        return result
+        return f"""
+        <div style="
+            background-color:#e0f2fe;
+            padding:15px;
+            border-radius:10px;
+            border-left:5px solid #0284c7;
+        ">
+        🤖 <b>AI Insight:</b><br><br>
+        {result}
+        </div>
+        """
+
+    # ⚠️ FALLBACK UI (MATCHES YOUR WARNING STYLE)
     else:
         return f"""
-⚠️ AI temporarily unavailable (quota limit)
-
-📊 Smart Suggestion:
-{donor['name']} can support {donor['capacity']} people.
-
-✅ Recommended to deploy based on capacity and location.
-"""
+        <div style="
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 16px;
+            border-radius: 10px;
+            border-left: 6px solid #f59e0b;
+            margin-top: 10px;
+        ">
+            <b>⚠️ AI temporarily unavailable (quota limit)</b><br><br>
+            
+            📊 <b>Smart Suggestion:</b> {donor['name']} can support {donor['capacity']} people.<br><br>
+            
+            ✅ <b>Recommendation:</b> Deploy based on capacity and location.
+        </div>
+        """
 
 # ----------------------------
 # LOAD DATA
@@ -135,37 +114,36 @@ df = get_donors()
 # ----------------------------
 # SIDEBAR
 # ----------------------------
-st.sidebar.markdown("## 🎯 Disaster Input Panel")
-location = st.sidebar.selectbox("Location", sorted(df["location"].unique()))
-resource_type = st.sidebar.selectbox(
-    "Resource Type", ["Shelter", "Food", "Blood", "Volunteers", "Medical"]
-)
+st.sidebar.title("🎯 Disaster Input Panel")
+
+location = st.sidebar.selectbox("Location", df["location"].unique())
+resource_type = st.sidebar.selectbox("Resource Type", df["type"].unique())
 urgency = st.sidebar.selectbox("Urgency", ["Low", "Medium", "High"])
 people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
 
 # ----------------------------
 # FILTER + SCORE
 # ----------------------------
-filtered_df = df[df["type"] == resource_type].copy()
+filtered = df[df["type"] == resource_type].copy()
 
-def calculate_score(row):
-    score = 0
+def score(row):
+    s = 0
     if row["location"] == location:
-        score += 50
-    score += min(row["capacity"], people_needed) / people_needed * 40
+        s += 50
+    s += min(row["capacity"], people_needed)
     if urgency == "High":
-        score += 10
-    return int(score)
+        s += 20
+    return s
 
-filtered_df["score"] = filtered_df.apply(calculate_score, axis=1)
-df_sorted = filtered_df.sort_values(by="score", ascending=False)
+filtered["score"] = filtered.apply(score, axis=1)
+sorted_df = filtered.sort_values(by="score", ascending=False)
 
 # ----------------------------
-# HEADER
+# MAIN UI
 # ----------------------------
 st.title("🚨 AI Disaster Resource Optimizer")
 
-best = df_sorted.iloc[0]
+best = sorted_df.iloc[0]
 
 st.markdown(f"""
 <div class="hero">
@@ -173,26 +151,19 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown(f"""
-### 🚨 Decision Summary
-- 📍 {location}
-- 📦 {resource_type}
-- 👥 {people_needed}
-""")
-
 # ----------------------------
 # OPTIONS
 # ----------------------------
 st.subheader("🏆 Deployment Options")
 
-for _, row in df_sorted.head(3).iterrows():
+for _, row in sorted_df.head(3).iterrows():
     st.write(f"### {row['name']}")
     st.progress(row["score"] / 100)
 
     if st.button(f"🤖 Explain - {row['name']}"):
-        st.info(get_ai_explanation(row, people_needed))
+        st.markdown(get_ai_explanation(row, people_needed), unsafe_allow_html=True)
 
 # ----------------------------
 # TABLE
 # ----------------------------
-st.dataframe(df_sorted)
+st.dataframe(sorted_df)

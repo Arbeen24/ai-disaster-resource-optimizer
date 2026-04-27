@@ -24,7 +24,7 @@ def get_ai_response(prompt):
     except:
         return {"status": "error"}
 
-# ================= CSS (FIXED FOR LIGHT + DARK) =================
+# ================= CSS FIX =================
 st.markdown("""
 <style>
 .card {
@@ -32,13 +32,10 @@ st.markdown("""
     border-radius: 18px;
     border: 1px solid rgba(0,0,0,0.15);
     transition: 0.3s ease;
-
-    /* FIXED */
     background: rgba(255,255,255,0.85);
     color: #111111 !important;
 }
 
-/* DARK MODE FIX */
 @media (prefers-color-scheme: dark) {
     .card {
         background: rgba(255,255,255,0.08);
@@ -47,18 +44,15 @@ st.markdown("""
     }
 }
 
-/* Ensure ALL text inside card is visible */
-.card h3, .card p, .card span {
+.card h3, .card p {
     color: inherit !important;
 }
 
-/* Hover effect */
 .card:hover {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 0 25px rgba(0,255,200,0.35);
 }
 
-/* Best card highlight */
 .best {
     border: 2px solid #00ffcc;
 }
@@ -93,43 +87,35 @@ best = df.iloc[0]
 
 # ================= HEADER =================
 st.title("🚨 AI Disaster Resource Optimizer")
-
 st.warning("⚠️ Every second matters in disaster response.")
-
 st.success(f"🚀 Best Match: {best['name']}")
 
-# ================= 🔥 AI FEATURE BUTTONS (ADDED BACK) =================
-st.markdown("## 🤖 AI Insights")
+# ================= AI BUTTONS =================
+st.subheader("🤖 AI Insights")
 
 if st.button("🤖 Why this is Best?"):
-    prompt = f"Why is {best['name']} best? Capacity {best['capacity']} Needed {people_needed}"
-    result = get_ai_response(prompt)
-
+    result = get_ai_response(f"Why is {best['name']} best for {people_needed} people?")
     if result["status"] == "success":
         st.success(result["data"])
     else:
-        st.warning("⚠️ Gemini API issue → fallback used")
+        st.warning("⚠️ Gemini API issue → showing fallback")
         st.info("Selected based on highest capacity and demand match.")
 
 if st.button("🧠 Generate Disaster Plan"):
-    prompt = f"Disaster plan for {location}, {people_needed} people, urgency {urgency}"
-    result = get_ai_response(prompt)
-
+    result = get_ai_response(f"Disaster plan for {location} for {people_needed} people.")
     if result["status"] == "success":
         st.success(result["data"])
     else:
-        st.warning("⚠️ Gemini API issue → fallback used")
+        st.warning("⚠️ Gemini API issue → showing fallback")
         st.info("Deploy resources, prioritize critical zones, monitor continuously.")
 
 if st.button("⚠️ Risk Analysis"):
-    prompt = f"Risk if capacity is insufficient. Needed {people_needed}"
-    result = get_ai_response(prompt)
-
+    result = get_ai_response(f"Risk if capacity is insufficient for {people_needed}")
     if result["status"] == "success":
         st.error(result["data"])
     else:
-        st.warning("⚠️ Gemini API issue → fallback used")
-        st.error("High risk due to limited resources.")
+        st.warning("⚠️ Gemini API issue → showing fallback")
+        st.error("High risk due to insufficient resources.")
 
 # ================= CARDS =================
 st.subheader("🏆 Deployment Options")
@@ -139,7 +125,7 @@ cols = st.columns(3)
 for i, (_, row) in enumerate(df.head(3).iterrows()):
     with cols[i]:
 
-        key = f"ai_{i}"
+        key = f"explain_{i}"
         if key not in st.session_state:
             st.session_state[key] = None
 
@@ -152,33 +138,33 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
         </div>
         """, unsafe_allow_html=True)
 
+        # Capacity status
         if row["capacity"] >= people_needed:
             st.success("🟢 Sufficient Capacity")
         else:
             st.error("🔴 Not Enough Capacity")
 
+        # Explain button
         if st.button("✨ Explain", key=f"btn_{i}"):
 
-            prompt = f"""
-            Resource: {row['name']}
-            Capacity: {row['capacity']}
-            Needed: {people_needed}
-            Urgency: {urgency}
-            """
-
-            result = get_ai_response(prompt)
+            result = get_ai_response(
+                f"Explain why {row['name']} is suitable. Capacity {row['capacity']}, needed {people_needed}"
+            )
 
             if result["status"] == "success":
                 st.session_state[key] = result["data"]
             else:
                 st.session_state[key] = f"""
-⚠️ Gemini API issue → fallback used
+⚠️ Gemini API quota exceeded / unavailable
 
-Capacity: {row['capacity']} | Needed: {people_needed}
+Fallback Analysis:
+Capacity: {row['capacity']}
+Needed: {people_needed}
 
-{"Sufficient" if row['capacity'] >= people_needed else "Insufficient"}
+{"✔️ Sufficient capacity" if row["capacity"] >= people_needed else "❌ Not sufficient"}
 """
 
+        # SHOW ONLY AFTER CLICK (FIXED BUG)
         if st.session_state[key]:
             st.info(st.session_state[key])
 
@@ -187,5 +173,5 @@ st.subheader("📊 Resource Distribution")
 st.bar_chart(df.set_index("name")["capacity"])
 
 # ================= TABLE =================
-st.subheader("📋 Available Resources")
+st.subheader("📋 Available Resource Providers")
 st.dataframe(df)

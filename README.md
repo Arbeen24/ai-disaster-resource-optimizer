@@ -1,46 +1,141 @@
-🌍 AI Disaster Resource Optimizer
+# 🌍 AI Disaster Resource Optimizer
 
-🔗 Live App: https://ai-disaster-resource-optimizer-cuem4vunqmwgwxqbhjjlse.streamlit.app/
+🏆 **Hackathon Project | AI-Powered Disaster Management**
 
-📌 Problem Statement
-Efficient allocation of resources during disasters is a major challenge, often causing delays, mismanagement, and loss of lives. There is a need for a smart system that can prioritize and distribute resources effectively in real-time.
+🔗 **Live App:**
+https://ai-disaster-resource-optimizer-cuem4vunqmwgwxqbhjjlse.streamlit.app/
 
-💡 Solution
-This project presents an intelligent system that optimizes disaster resource allocation by matching available resources (donors) with urgent needs. It ensures faster, smarter, and priority-based distribution during critical situations.
+---
 
-🚀 Features
+## 📌 Problem Statement
 
-* Smart donor/resource matching
-* Priority-based allocation system
-* Real-time data handling
-* Decision-support system for optimized allocation
+During disaster situations, efficient allocation of critical resources such as shelters, medical aid, food, and volunteers is extremely challenging. Delays, poor prioritization, and lack of real-time decision support often lead to mismanagement and increased risk to human lives.
 
-🛠️ Tech Stack
+There is a strong need for an **intelligent system** that can:
 
-* Python
-* Streamlit
+* Analyze demand vs availability
+* Prioritize urgent needs
+* Recommend optimal resource allocation instantly
 
-🤖 AI Integration Attempt
-I attempted to integrate the Google Gemini API to enhance the application with AI-based decision-making. However, during implementation, I encountered repeated API-related errors such as model access issues and configuration limitations. Despite multiple attempts to resolve them, the integration could not be completed within the given time.
+---
 
-To ensure the project remains functional and reliable, I implemented a rule-based intelligent system for resource prioritization and allocation. This allows the application to perform efficient matching and decision support even without the API.
+## 💡 Solution
 
-The Gemini API integration is planned as a future enhancement to further improve prediction accuracy and real-time decision-making capabilities.
+**AI Disaster Resource Optimizer** is a smart decision-support system designed to:
 
-▶️ How to Run
+* Match available resources with disaster needs
+* Rank options using priority scoring
+* Provide quick and effective deployment recommendations
 
-1. Clone the repository
-2. Install dependencies:
-   pip install -r requirements.txt
-3. Run the application:
-   streamlit run app.py
+The system ensures:
+⚡ Faster decisions
+🎯 Better prioritization
+📊 Data-driven allocation
 
-📈 Future Enhancements
+---
 
-* Integration with Google Gemini API
-* Live map integration for resource tracking
-* Real-time alerts and notifications
-* Mobile application support
+## 🚀 Key Features
 
-👤 Author
-Arbeen Arif
+* 🧠 **Smart Resource Matching**
+  Automatically identifies the best-fit shelters/resources based on demand
+
+* 🏷️ **Priority-Based Allocation System**
+  Dynamic scoring using:
+
+  * Capacity
+  * Volunteers
+  * Urgency level
+
+* 📊 **Live Resource Visualization**
+  Interactive charts for better decision understanding
+
+* 🧑‍🚒 **Multi-Resource Support**
+  Supports:
+
+  * Shelter
+  * Medical
+  * Food
+  * Volunteers
+
+* 🤖 **AI Explainability with Fallback**
+
+  * Uses Gemini API when available
+  * Falls back to intelligent rule-based explanations when API fails
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend/UI:** Streamlit
+* **Backend Logic:** Python
+* **Data Handling:** Pandas
+* **AI Integration:** Google Gemini API (with fallback system)
+
+---
+
+## 🤖 AI Integration
+
+This project integrates **Google Gemini API** to enhance decision-making.
+
+### ✅ What AI does:
+
+* Explains why a resource is selected
+* Provides smart deployment suggestions
+* Assists in disaster planning insights
+
+### ⚠️ Limitation:
+
+Due to API quota or access restrictions, AI responses may sometimes be unavailable.
+
+### 🔁 Smart Fallback System:
+
+To ensure reliability:
+
+* A **rule-based intelligent fallback system** is implemented
+* It continues to provide:
+
+  * Capacity analysis
+  * Resource suitability
+  * Deployment recommendations
+
+👉 This ensures the app **never breaks**, even if AI is unavailable.
+
+---
+
+## ▶️ How to Run Locally
+
+```bash
+# Clone the repository
+git clone <your-repo-link>
+
+# Navigate into the project
+cd <your-project-folder>
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the app
+streamlit run app.py
+```
+
+---
+
+## 📈 Future Enhancements
+
+* 🔥 Full Gemini AI integration (no quota limits)
+* 🗺️ Live map-based resource tracking
+* 📡 Real-time alerts & notifications
+* 📱 Mobile-friendly version
+* 📊 Predictive disaster demand analysis
+
+---
+
+## 👤 Author
+
+**Arbeen Arif**
+
+---
+
+## 🌟 Project Vision
+
+To build a **scalable AI-powered disaster management system** that enables authorities and organizations to make **faster, smarter, and life-saving decisions** during critical situations.

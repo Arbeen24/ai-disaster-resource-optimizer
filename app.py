@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 import random
-import time
 import google.generativeai as genai
 import os
 
 # ----------------------------
-# 🔑 CONFIGURE GEMINI (SECURE)
+# 🔑 GEMINI CONFIG
 # ----------------------------
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash")
@@ -14,32 +13,14 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
 # ----------------------------
-# 🎨 GLASS UI STYLING
+# 🎨 UI STYLE
 # ----------------------------
 st.markdown("""
 <style>
-.main {
-    background: linear-gradient(135deg, #0E1117, #1a1f2b);
-    color: white;
-}
-
-.card {
-    background: rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(10px);
-    border-radius:15px;
-    padding:15px;
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
 .hero {
-    background: rgba(0, 201, 167, 0.15);
-    border-radius:15px;
-    padding:25px;
-    border:1px solid rgba(0,201,167,0.4);
-}
-
-h1, h2, h3 {
-    color: #00C9A7;
+    background: #d1fae5;
+    padding: 20px;
+    border-radius: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -47,7 +28,7 @@ h1, h2, h3 {
 # ----------------------------
 # 📊 DATA
 # ----------------------------
-def get_donors():
+def get_data():
     cities = ["Bangalore","Mumbai","Delhi","Chennai","Hyderabad","Ahmedabad"]
     types = ["Shelter","Food","Medical","Volunteers"]
 
@@ -63,75 +44,63 @@ def get_donors():
                 })
     return pd.DataFrame(data)
 
-# ----------------------------
-# 🤖 AI (CACHED + FALLBACK)
-# ----------------------------
-@st.cache_data(show_spinner=False)
-def get_ai_cached(prompt):
-    try:
-        res = model.generate_content(prompt)
-        return res.text
-    except:
-        return None
+df = get_data()
 
+# ----------------------------
+# 🤖 AI FUNCTION
+# ----------------------------
 def get_ai_explanation(donor, people_needed):
-    prompt = f"""
-    Resource: {donor['name']}
-    Type: {donor['type']}
-    City: {donor['location']}
-    Capacity: {donor['capacity']}
-    Demand: {people_needed}
+    try:
+        prompt = f"""
+        Resource: {donor['name']}
+        Type: {donor['type']}
+        City: {donor['location']}
+        Capacity: {donor['capacity']}
+        Demand: {people_needed}
 
-    Explain suitability, risk, and recommendation.
-    """
+        Explain suitability briefly.
+        """
 
-    result = get_ai_cached(prompt)
+        res = model.generate_content(prompt)
 
-    # ✅ AI WORKING
-    if result:
+        # ✅ AI WORKING
         return f"""
         <div style="
-            background-color:#e0f2fe;
+            background:#e0f2fe;
             padding:15px;
             border-radius:10px;
             border-left:5px solid #0284c7;
         ">
         🤖 <b>AI Insight:</b><br><br>
-        {result}
+        {res.text}
         </div>
         """
 
-    # ⚠️ FALLBACK UI
-    else:
+    except:
+        # ⚠️ FALLBACK
         return f"""
         <div style="
-            background-color: #fef3c7;
-            color: #92400e;
-            padding: 16px;
-            border-radius: 10px;
-            border-left: 6px solid #f59e0b;
+            background:#fef3c7;
+            padding:15px;
+            border-radius:10px;
+            border-left:5px solid #f59e0b;
         ">
-            ⚠️ <b>AI temporarily unavailable (quota limit)</b><br><br>
+        ⚠️ <b>AI temporarily unavailable (quota limit)</b><br><br>
 
-            <div style="
-                background-color:#f3f4f6;
-                padding:10px;
-                border-radius:8px;
-                color:black;
-            ">
-                📊 <b>Smart Suggestion:</b> {donor['name']} can support {donor['capacity']} people.<br><br>
-                ✅ <b>Recommendation:</b> Deploy based on capacity and location.
-            </div>
+        <div style="
+            background:#f3f4f6;
+            padding:10px;
+            border-radius:8px;
+            color:black;
+        ">
+        📊 <b>Smart Suggestion:</b> {donor['name']} can support {donor['capacity']} people.<br><br>
+        ✅ <b>Recommendation:</b> Deploy based on capacity and location.
+        </div>
         </div>
         """
 
 # ----------------------------
-# LOAD DATA
-# ----------------------------
-df = get_donors()
-
-# ----------------------------
-# SIDEBAR
+# 🎯 SIDEBAR
 # ----------------------------
 st.sidebar.title("🎯 Disaster Input Panel")
 
@@ -141,7 +110,7 @@ urgency = st.sidebar.selectbox("Urgency", ["Low","Medium","High"])
 people_needed = st.sidebar.slider("People Needed", 10,200,50)
 
 # ----------------------------
-# FILTER + SCORE
+# 🧠 FILTER + SCORE
 # ----------------------------
 filtered = df[df["type"] == resource_type].copy()
 
@@ -158,7 +127,7 @@ filtered["score"] = filtered.apply(score, axis=1)
 sorted_df = filtered.sort_values(by="score", ascending=False)
 
 # ----------------------------
-# HEADER
+# 🚨 HEADER
 # ----------------------------
 st.title("🚨 AI Disaster Resource Optimizer")
 
@@ -171,7 +140,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ----------------------------
-# OPTIONS
+# 🏆 OPTIONS
 # ----------------------------
 st.subheader("🏆 Deployment Options")
 
@@ -179,11 +148,12 @@ for _, row in sorted_df.head(3).iterrows():
     st.write(f"### {row['name']}")
     st.progress(row["score"]/100)
 
-    if st.button(f"🤖 Explain - {row['name']}"):
+    if st.button(f"Explain - {row['name']}"):
+        # ✅ THIS IS THE FIX
         st.markdown(get_ai_explanation(row, people_needed), unsafe_allow_html=True)
 
 # ----------------------------
-# 📊 CHART (UPDATED)
+# 📊 CHART
 # ----------------------------
 st.subheader(f"📊 Resource Distribution in {location}")
 
@@ -196,10 +166,10 @@ chart_data = (
     .set_index("type")
 )
 
-st.bar_chart(chart_data, width="stretch")  # ✅ updated
+st.bar_chart(chart_data)
 
 # ----------------------------
-# TABLE
+# 📋 TABLE
 # ----------------------------
 st.subheader("📋 Available Providers")
-st.dataframe(sorted_df, width="stretch")
+st.dataframe(sorted_df)

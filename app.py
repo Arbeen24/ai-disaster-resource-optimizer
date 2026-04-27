@@ -21,7 +21,7 @@ except:
 st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
 # =========================
-# ULTRA CLEAN CSS
+# CSS
 # =========================
 st.markdown("""
 <style>
@@ -30,21 +30,14 @@ body {
     color: white;
 }
 
-.block-container {
-    padding-top: 1rem;
-}
-
-/* Top Info */
 .info-bar {
     background: #fde68a;
     color: black;
     padding: 12px;
     border-radius: 10px;
     margin-bottom: 15px;
-    font-weight: 500;
 }
 
-/* Best Match */
 .hero {
     background: linear-gradient(90deg, #00c9a7, #007cf0);
     padding: 20px;
@@ -54,40 +47,33 @@ body {
     font-weight: bold;
 }
 
-/* Cards */
 .card {
     background: rgba(255,255,255,0.08);
     padding:20px;
     border-radius:15px;
     border:1px solid rgba(255,255,255,0.15);
-    transition: all 0.3s ease;
+    transition: 0.3s;
     min-height: 270px;
 }
 
 .card:hover {
-    transform: translateY(-6px) scale(1.02);
+    transform: translateY(-6px);
     box-shadow: 0 0 25px rgba(0,255,200,0.4);
 }
 
-/* Highlight best card */
 .best-card {
     border:2px solid #00ffcc;
-    box-shadow: 0 0 25px rgba(0,255,200,0.6);
 }
 
-/* AI box */
 .ai-box {
     background: rgba(255,255,255,0.12);
     padding:12px;
     border-radius:10px;
     margin-top:12px;
-    font-size: 14px;
 }
 
-/* Status colors */
-.good {color: #00ff99;}
-.bad {color: #ff5c5c;}
-
+.good {color:#00ff99;}
+.bad {color:#ff5c5c;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -124,7 +110,6 @@ df = pd.DataFrame(data)
 # =========================
 df["score"] = df["capacity"] - people_needed
 df = df.sort_values(by="score", ascending=False)
-
 best = df.iloc[0]
 
 # =========================
@@ -155,8 +140,10 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
     with cols[i]:
 
         key = f"ai_{i}"
+
+        # ✅ FIX: initialize properly
         if key not in st.session_state:
-            st.session_state[key] = ""
+            st.session_state[key] = None
 
         is_best = row["name"] == best["name"]
         card_class = "card best-card" if is_best else "card"
@@ -174,20 +161,27 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
         {status}
         """, unsafe_allow_html=True)
 
+        # =========================
+        # BUTTON
+        # =========================
         if st.button("✨ Explain", key=f"btn_{i}"):
+
+            # ✅ RESET FIRST (fix bug)
+            st.session_state[key] = None
 
             if AI_AVAILABLE:
                 try:
-                    prompt = f"""
-                    Resource: {row['name']}
-                    Capacity: {row['capacity']}
-                    Required: {people_needed}
-                    Urgency: {urgency}
+                    with st.spinner("🤖 AI analyzing..."):
+                        prompt = f"""
+                        Resource: {row['name']}
+                        Capacity: {row['capacity']}
+                        Required: {people_needed}
+                        Urgency: {urgency}
 
-                    Give short explanation.
-                    """
-                    res = model.generate_content(prompt)
-                    st.session_state[key] = res.text
+                        Explain briefly.
+                        """
+                        res = model.generate_content(prompt)
+                        st.session_state[key] = res.text
 
                 except:
                     st.session_state[key] = f"""
@@ -195,9 +189,9 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
 
 Capacity: {row['capacity']} | Needed: {people_needed}
 
-{"🟢 Sufficient capacity to handle the situation." if row['capacity'] >= people_needed else "🔴 Insufficient capacity — requires additional support."}
+{"🟢 Sufficient capacity to handle the situation." if row['capacity'] >= people_needed else "🔴 Insufficient capacity — requires backup hubs."}
 
-🚀 Recommendation: {"Deploy immediately due to high urgency." if urgency=="High" else "Deploy as required based on demand."}
+🚀 Recommendation: {"Deploy immediately." if urgency=="High" else "Deploy as needed."}
 """
 
             else:
@@ -206,15 +200,17 @@ Capacity: {row['capacity']} | Needed: {people_needed}
 
 This hub can support {row['capacity']} people.
 
-{"🟢 Fully meets the requirement." if row['capacity'] >= people_needed else "🔴 Does not fully meet demand — consider backup hubs."}
+{"🟢 Fully meets the requirement." if row['capacity'] >= people_needed else "🔴 Does not fully meet demand — consider additional hubs."}
 
 ⚡ Urgency Level: {urgency}
 """
 
-        # ✅ FIXED DISPLAY (NO </div> BUG)
-        if st.session_state[key]:
+        # =========================
+        # DISPLAY (FIXED)
+        # =========================
+        if st.session_state[key] is not None:
             st.markdown('<div class="ai-box">', unsafe_allow_html=True)
-            st.write(st.session_state[key])
+            st.write(st.session_state[key])  # ✅ NO HTML BUG
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)

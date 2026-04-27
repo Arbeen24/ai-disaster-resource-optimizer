@@ -3,14 +3,10 @@ import pandas as pd
 import random
 import google.generativeai as genai
 
-# =========================
-# PAGE CONFIG
-# =========================
+# ================= CONFIG =================
 st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
-# =========================
-# GEMINI SETUP
-# =========================
+# ================= GEMINI =================
 AI_AVAILABLE = False
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -19,87 +15,60 @@ try:
 except:
     pass
 
-# =========================
-# UNIVERSAL AI HANDLER
-# =========================
 def get_ai_response(prompt):
     if not AI_AVAILABLE:
-        return {"status": "error", "data": "AI not configured"}
+        return {"status": "error"}
     try:
         response = model.generate_content(prompt)
         return {"status": "success", "data": response.text}
-    except Exception as e:
-        return {"status": "error", "data": str(e)}
+    except:
+        return {"status": "error"}
 
-# =========================
-# UI STYLING
-# =========================
+# ================= CSS FIXED =================
 st.markdown("""
 <style>
-body {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+.card {
+    background: rgba(255,255,255,0.08);
+    padding: 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
     color: white;
 }
 
-.info-bar {
-    background: #fde68a;
-    color: black;
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 15px;
+/* FORCE TEXT VISIBLE */
+.card h3, .card p {
+    color: white;
 }
 
-.hero {
-    background: linear-gradient(90deg, #00c9a7, #007cf0);
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    font-weight: bold;
-}
-
-.card {
-    background: rgba(255,255,255,0.08);
-    padding:20px;
-    border-radius:15px;
-    border:1px solid rgba(255,255,255,0.15);
-    transition: 0.3s;
-    min-height: 260px;
-}
-
+/* HOVER */
 .card:hover {
-    transform: translateY(-6px);
+    transform: translateY(-8px) scale(1.02);
+    border: 1px solid rgba(0,255,200,0.7);
+    box-shadow: 0 0 25px rgba(0,255,200,0.4);
 }
 
-.best-card {
-    border:2px solid #00ffcc;
-}
-
-.ai-box {
-    background: rgba(255,255,255,0.12);
-    padding:10px;
-    border-radius:10px;
-    margin-top:10px;
+/* BEST CARD */
+.best {
+    border: 2px solid #00ffcc;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
-# SIDEBAR
-# =========================
+# ================= SIDEBAR =================
 st.sidebar.title("🎯 Disaster Input Panel")
 
 location = st.sidebar.selectbox("Location", [
     "Bangalore","Mumbai","Chennai","Hyderabad",
-    "Delhi","Kolkata","Pune","Ahmedabad","Jaipur","Lucknow"
+    "Delhi","Kolkata","Pune","Ahmedabad"
 ])
 
 resource_type = st.sidebar.selectbox("Resource Type", ["Shelter","Medical","Food"])
 urgency = st.sidebar.selectbox("Urgency", ["Low","Medium","High"])
 people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
 
-# =========================
-# DATA
-# =========================
+# ================= DATA =================
 data = []
 for i in range(1,6):
     data.append({
@@ -113,32 +82,14 @@ df = df.sort_values(by="score", ascending=False)
 
 best = df.iloc[0]
 
-# =========================
-# HEADER
-# =========================
+# ================= HEADER =================
 st.title("🚨 AI Disaster Resource Optimizer")
 
-st.markdown('<div class="info-bar">⚠️ Every second matters in disaster response.</div>', unsafe_allow_html=True)
+st.warning("⚠️ Every second matters in disaster response.")
 
-st.markdown(f'<div class="hero">🚀 Best Match: {best["name"]}</div>', unsafe_allow_html=True)
+st.success(f"🚀 Best Match: {best['name']}")
 
-# =========================
-# BEST MATCH AI
-# =========================
-if st.button("🤖 Why this is Best?"):
-    prompt = f"Explain why {best['name']} is best. Capacity {best['capacity']}, Needed {people_needed}"
-    result = get_ai_response(prompt)
-
-    if result["status"] == "success":
-        st.success("🤖 AI Insight")
-        st.write(result["data"])
-    else:
-        st.warning("⚠️ Gemini API issue. Showing fallback.")
-        st.info("Selected based on highest capacity and demand match.")
-
-# =========================
-# CARDS
-# =========================
+# ================= CARDS =================
 st.subheader("🏆 Deployment Options")
 
 cols = st.columns(3)
@@ -146,24 +97,29 @@ cols = st.columns(3)
 for i, (_, row) in enumerate(df.head(3).iterrows()):
     with cols[i]:
 
+        # store state
         key = f"ai_{i}"
         if key not in st.session_state:
             st.session_state[key] = None
 
-        is_best = row["name"] == best["name"]
-        card_class = "card best-card" if is_best else "card"
+        # BEST CARD HIGHLIGHT
+        card_class = "card best" if row["name"] == best["name"] else "card"
 
-        st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
+        # CARD CONTENT (ONLY TEXT)
+        st.markdown(f"""
+        <div class="{card_class}">
+            <h3>{row['name']}</h3>
+            <p>👥 Capacity: {row['capacity']}</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown(f"### {row['name']}")
-        st.write(f"👥 Capacity: {row['capacity']}")
-
+        # STATUS (OUTSIDE CARD → IMPORTANT)
         if row["capacity"] >= people_needed:
-            st.success("🟢 Sufficient")
+            st.success("🟢 Sufficient Capacity")
         else:
-            st.error("🔴 Not Enough")
+            st.error("🔴 Not Enough Capacity")
 
-        # ===== EXPLAIN =====
+        # BUTTON
         if st.button("✨ Explain", key=f"btn_{i}"):
 
             prompt = f"""
@@ -179,57 +135,23 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
                 st.session_state[key] = result["data"]
             else:
                 st.session_state[key] = f"""
-📊 Smart Analysis
+⚠️ Gemini API issue → fallback used
 
-Capacity: {row['capacity']} | Needed: {people_needed}
+📊 Capacity: {row['capacity']} | Needed: {people_needed}
 
-{"🟢 Sufficient capacity." if row['capacity'] >= people_needed else "🔴 Insufficient capacity."}
+{"🟢 Sufficient capacity" if row['capacity'] >= people_needed else "🔴 Insufficient capacity"}
 
-⚠️ Gemini API issue detected → fallback used
+🚀 Recommendation: {"Deploy" if row['capacity'] >= people_needed else "Use multiple hubs"}
 """
 
-        if st.session_state[key] is not None:
-            st.markdown('<div class="ai-box">', unsafe_allow_html=True)
-            st.write(st.session_state[key])
-            st.markdown('</div>', unsafe_allow_html=True)
+        # SHOW RESULT ONLY AFTER CLICK
+        if st.session_state[key]:
+            st.info(st.session_state[key])
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================
-# DISASTER PLAN
-# =========================
-if st.button("🧠 Generate Disaster Plan"):
-    prompt = f"Give disaster plan for {location}, {people_needed} people, urgency {urgency}"
-    result = get_ai_response(prompt)
-
-    if result["status"] == "success":
-        st.success("🚨 AI Plan")
-        st.write(result["data"])
-    else:
-        st.warning("⚠️ Gemini API issue. Showing fallback.")
-        st.info("Deploy resources, prioritize critical zones, monitor continuously.")
-
-# =========================
-# RISK ANALYSIS
-# =========================
-if st.button("⚠️ Risk Analysis"):
-    prompt = f"Risk if capacity is low. Needed {people_needed}"
-    result = get_ai_response(prompt)
-
-    if result["status"] == "success":
-        st.error(result["data"])
-    else:
-        st.warning("⚠️ Gemini API issue. Showing fallback.")
-        st.error("High risk due to insufficient capacity.")
-
-# =========================
-# CHART
-# =========================
+# ================= CHART =================
 st.subheader("📊 Resource Distribution")
 st.bar_chart(df.set_index("name")["capacity"])
 
-# =========================
-# TABLE
-# =========================
-st.subheader("📋 Available Resource Providers")
+# ================= TABLE =================
+st.subheader("📋 Available Resources")
 st.dataframe(df)

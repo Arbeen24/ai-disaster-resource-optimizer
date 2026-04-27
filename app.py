@@ -174,8 +174,11 @@ Needed: {people_needed}
             st.info(st.session_state[key])
 
 # ================= CHART =================
+
+df_chart = df[["name", "capacity"]].set_index("name")
+
 st.subheader("📊 Resource Distribution")
-st.bar_chart(df.set_index("name")[["capacity","volunteers"]])  # ✅ UPDATED
+st.bar_chart(df_chart) # ✅ UPDATED
 
 # ================= TABLE =================
 st.subheader("📋 Available Resource Providers")

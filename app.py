@@ -30,28 +30,35 @@ st.markdown("""
 .card {
     padding: 20px;
     border-radius: 18px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid rgba(0,0,0,0.15);
     transition: 0.3s ease;
-    background: rgba(255,255,255,0.7);
-    color: black;
+
+    /* FIXED */
+    background: rgba(255,255,255,0.85);
+    color: #111111 !important;
 }
 
-/* Dark mode support */
+/* DARK MODE FIX */
 @media (prefers-color-scheme: dark) {
     .card {
         background: rgba(255,255,255,0.08);
-        color: white;
+        color: #ffffff !important;
         border: 1px solid rgba(255,255,255,0.2);
     }
 }
 
-/* Hover */
-.card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 0 20px rgba(0,255,200,0.3);
+/* Ensure ALL text inside card is visible */
+.card h3, .card p, .card span {
+    color: inherit !important;
 }
 
-/* Best card */
+/* Hover effect */
+.card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 0 25px rgba(0,255,200,0.35);
+}
+
+/* Best card highlight */
 .best {
     border: 2px solid #00ffcc;
 }

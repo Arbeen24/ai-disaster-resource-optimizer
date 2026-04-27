@@ -148,11 +148,7 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
         else:
             st.error("🔴 Not Enough Capacity")
 
-        # Volunteers status (NEW)
-        if row["volunteers"] >= people_needed * 0.5:
-            st.success("🧑‍🚒 Enough Volunteers")
-        else:
-            st.warning("⚠️ Limited Volunteers")
+        
 
         # Explain button
         if st.button("✨ Explain", key=f"btn_{i}"):

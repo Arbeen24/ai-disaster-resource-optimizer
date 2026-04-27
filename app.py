@@ -1,228 +1,162 @@
 import streamlit as st
 import pandas as pd
 import random
+import google.generativeai as genai
 
-# =========================
-# GEMINI SETUP
-# =========================
-AI_AVAILABLE = False
+# ------------------ CONFIG ------------------
+st.set_page_config(page_title="AI Disaster Resource Optimizer", layout="wide")
+
+# Gemini API
 try:
-    import google.generativeai as genai
-    if "GEMINI_API_KEY" in st.secrets:
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
-        AI_AVAILABLE = True
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    AI_AVAILABLE = True
 except:
-    pass
+    AI_AVAILABLE = False
 
-# =========================
-# PAGE CONFIG
-# =========================
-st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
+# ------------------ DATA ------------------
+cities = ["Bangalore", "Mumbai", "Chennai", "Hyderabad", "Delhi"]
 
-# =========================
-# CSS
-# =========================
+resources = []
+
+for city in cities:
+    for i in range(1, 6):
+        resources.append({
+            "name": f"{city} Medical Hub {i}",
+            "type": "Medical",
+            "location": city,
+            "capacity": random.randint(80, 200)
+        })
+
+        resources.append({
+            "name": f"{city} Shelter Hub {i}",
+            "type": "Shelter",
+            "location": city,
+            "capacity": random.randint(60, 180)
+        })
+
+df = pd.DataFrame(resources)
+
+# ------------------ SIDEBAR ------------------
+st.sidebar.title("🎯 Disaster Input Panel")
+
+location = st.sidebar.selectbox("Location", cities)
+resource_type = st.sidebar.selectbox("Resource Type", ["Medical", "Shelter"])
+urgency = st.sidebar.selectbox("Urgency", ["Low", "Medium", "High"])
+people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
+
+st.sidebar.markdown("🌍 **10 Cities Supported**")
+
+# ------------------ FILTER ------------------
+filtered = df[(df["location"] == location) & (df["type"] == resource_type)]
+
+# scoring logic
+filtered["score"] = filtered["capacity"] - people_needed
+filtered = filtered.sort_values(by="score", ascending=False)
+
+best = filtered.iloc[0]
+
+# ------------------ HEADER ------------------
+st.title("🚨 AI Disaster Resource Optimizer")
+
+st.warning("⚠️ Every second matters in disaster response. Choose wisely.")
+
+st.success(f"🚀 Best Match: {best['name']}")
+
+st.subheader("🏆 Deployment Options")
+
+# ------------------ GLASS CARD STYLE ------------------
 st.markdown("""
 <style>
-body {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: white;
-}
-
-.info-bar {
-    background: #fde68a;
-    color: black;
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-}
-
-.hero {
-    background: linear-gradient(90deg, #00c9a7, #007cf0);
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 25px;
-    color: white;
-    font-weight: bold;
-}
-
 .card {
-    background: rgba(255,255,255,0.08);
-    padding:20px;
-    border-radius:15px;
-    border:1px solid rgba(255,255,255,0.15);
-    transition: 0.3s;
-    min-height: 270px;
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
 }
-
-.card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 0 25px rgba(0,255,200,0.4);
-}
-
-.best-card {
-    border:2px solid #00ffcc;
-}
-
-.ai-box {
-    background: rgba(255,255,255,0.12);
-    padding:12px;
-    border-radius:10px;
-    margin-top:12px;
-}
-
-.good {color:#00ff99;}
-.bad {color:#ff5c5c;}
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
-# SIDEBAR
-# =========================
-st.sidebar.title("🎯 Disaster Input Panel")
-
-location = st.sidebar.selectbox("Location", [
-    "Bangalore","Mumbai","Chennai","Hyderabad",
-    "Delhi","Kolkata","Pune","Ahmedabad","Jaipur","Lucknow"
-])
-
-resource_type = st.sidebar.selectbox("Resource Type", ["Shelter","Medical","Food"])
-urgency = st.sidebar.selectbox("Urgency", ["Low","Medium","High"])
-people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
-
-st.sidebar.success("🌍 10 Cities Supported")
-
-# =========================
-# DATA
-# =========================
-data = []
-for i in range(1,6):
-    data.append({
-        "name": f"{location} {resource_type} Hub {i}",
-        "capacity": random.randint(60,200)
-    })
-
-df = pd.DataFrame(data)
-
-# =========================
-# SCORING
-# =========================
-df["score"] = df["capacity"] - people_needed
-df = df.sort_values(by="score", ascending=False)
-best = df.iloc[0]
-
-# =========================
-# HEADER
-# =========================
-st.title("🚨 AI Disaster Resource Optimizer")
-
-st.markdown("""
-<div class="info-bar">
-⚠️ Every second matters in disaster response. Choose wisely.
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown(f"""
-<div class="hero">
-🚀 Best Match: {best['name']}
-</div>
-""", unsafe_allow_html=True)
-
-# =========================
-# CARDS
-# =========================
-st.subheader("🏆 Deployment Options")
-
+# ------------------ CARDS ------------------
 cols = st.columns(3)
 
-for i, (_, row) in enumerate(df.head(3).iterrows()):
+for i, row in enumerate(filtered.head(3).itertuples()):
     with cols[i]:
 
-        key = f"ai_{i}"
-
-        # ✅ FIX: initialize properly
-        if key not in st.session_state:
-            st.session_state[key] = None
-
-        is_best = row["name"] == best["name"]
-        card_class = "card best-card" if is_best else "card"
-
-        status = (
-            "<span class='good'>🟢 Sufficient Capacity</span>"
-            if row["capacity"] >= people_needed
-            else "<span class='bad'>🔴 Not Enough Capacity</span>"
-        )
-
         st.markdown(f"""
-        <div class="{card_class}">
-        <h3>{row['name']}</h3>
-        👥 Capacity: {row['capacity']} <br><br>
-        {status}
+        <div class="card">
+        <h3>{row.name}</h3>
+        📍 {row.location}<br>
+        👥 Capacity: {row.capacity}<br>
         """, unsafe_allow_html=True)
 
-        # =========================
-        # BUTTON
-        # =========================
-        if st.button("✨ Explain", key=f"btn_{i}"):
-
-            # ✅ RESET FIRST (fix bug)
-            st.session_state[key] = None
-
-            if AI_AVAILABLE:
-                try:
-                    with st.spinner("🤖 AI analyzing..."):
-                        prompt = f"""
-                        Resource: {row['name']}
-                        Capacity: {row['capacity']}
-                        Required: {people_needed}
-                        Urgency: {urgency}
-
-                        Explain briefly.
-                        """
-                        res = model.generate_content(prompt)
-                        st.session_state[key] = res.text
-
-                except:
-                    st.session_state[key] = f"""
-📊 Smart Analysis
-
-Capacity: {row['capacity']} | Needed: {people_needed}
-
-{"🟢 Sufficient capacity to handle the situation." if row['capacity'] >= people_needed else "🔴 Insufficient capacity — requires backup hubs."}
-
-🚀 Recommendation: {"Deploy immediately." if urgency=="High" else "Deploy as needed."}
-"""
-
-            else:
-                st.session_state[key] = f"""
-🤖 AI Insight (Fallback Mode)
-
-This hub can support {row['capacity']} people.
-
-{"🟢 Fully meets the requirement." if row['capacity'] >= people_needed else "🔴 Does not fully meet demand — consider additional hubs."}
-
-⚡ Urgency Level: {urgency}
-"""
-
-        # =========================
-        # DISPLAY (FIXED)
-        # =========================
-        if st.session_state[key] is not None:
-            st.markdown('<div class="ai-box">', unsafe_allow_html=True)
-            st.write(st.session_state[key])  # ✅ NO HTML BUG
-            st.markdown('</div>', unsafe_allow_html=True)
+        if row.capacity >= people_needed:
+            st.success("🟢 Sufficient Capacity")
+        else:
+            st.error("🔴 Insufficient Capacity")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-# =========================
-# CHART
-# =========================
-st.subheader("📊 Resource Distribution")
-st.bar_chart(df.set_index("name")["capacity"])
+        # ----------- EXPLAIN BUTTON (FIXED) -----------
+        if st.button("✨ Explain", key=f"explain_{i}"):
 
-# =========================
-# TABLE
-# =========================
+            prompt = f"""
+            You are an AI disaster management assistant.
+
+            Location: {row.location}
+            Resource: {row.name}
+            Capacity: {row.capacity}
+            People Needed: {people_needed}
+            Urgency: {urgency}
+
+            Explain briefly whether this resource is suitable.
+            """
+
+            if AI_AVAILABLE:
+                try:
+                    response = model.generate_content(prompt)
+                    st.success("🤖 AI Explanation")
+                    st.write(response.text)
+
+                except:
+                    st.warning("⚠️ Gemini API quota exceeded or error. Showing fallback explanation.")
+
+                    # fallback
+                    if row.capacity >= people_needed:
+                        st.info(f"""
+📊 Smart Analysis  
+Capacity: {row.capacity} | Needed: {people_needed}
+
+🟢 This resource is sufficient.
+
+🚀 Recommendation: Deploy.
+""")
+                    else:
+                        st.error(f"""
+📊 Smart Analysis  
+Capacity: {row.capacity} | Needed: {people_needed}
+
+🔴 Not sufficient.
+
+⚠️ Recommendation: Use additional hubs.
+""")
+
+            else:
+                st.warning("⚠️ AI not configured. Showing fallback.")
+
+                if row.capacity >= people_needed:
+                    st.info("🟢 Enough capacity. Safe to deploy.")
+                else:
+                    st.error("🔴 Not enough capacity.")
+
+# ------------------ CHART ------------------
+st.subheader("📊 Resource Distribution")
+
+chart_data = filtered.head(5)
+
+st.bar_chart(chart_data.set_index("name")["capacity"])
+
+# ------------------ TABLE ------------------
 st.subheader("📋 Available Resource Providers")
-st.dataframe(df)
+st.dataframe(filtered.reset_index(drop=True))

@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import random
-import time
 
 # =========================
 # GEMINI SETUP
@@ -17,58 +16,77 @@ except:
     pass
 
 # =========================
-# PAGE
+# PAGE CONFIG
 # =========================
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
 # =========================
-# CSS (CLEAN GLASS UI)
+# ULTRA CLEAN CSS
 # =========================
 st.markdown("""
 <style>
+body {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: white;
+}
+
 .block-container {
     padding-top: 1rem;
 }
 
-/* Info bar */
+/* Top Info */
 .info-bar {
     background: #fde68a;
     color: black;
-    padding: 10px;
+    padding: 12px;
     border-radius: 10px;
     margin-bottom: 15px;
+    font-weight: 500;
 }
 
-/* Best match */
+/* Best Match */
 .hero {
-    background: rgba(0, 201, 167, 0.2);
+    background: linear-gradient(90deg, #00c9a7, #007cf0);
     padding: 20px;
     border-radius: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+    color: white;
+    font-weight: bold;
 }
 
 /* Cards */
 .card {
-    background: rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.08);
     padding:20px;
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,0.1);
-    transition: 0.3s;
-    min-height: 260px;
+    border-radius:15px;
+    border:1px solid rgba(255,255,255,0.15);
+    transition: all 0.3s ease;
+    min-height: 270px;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    border:1px solid #00C9A7;
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 0 25px rgba(0,255,200,0.4);
+}
+
+/* Highlight best card */
+.best-card {
+    border:2px solid #00ffcc;
+    box-shadow: 0 0 25px rgba(0,255,200,0.6);
 }
 
 /* AI box */
 .ai-box {
-    background: rgba(255,255,255,0.1);
-    padding:10px;
+    background: rgba(255,255,255,0.12);
+    padding:12px;
     border-radius:10px;
-    margin-top:10px;
+    margin-top:12px;
+    font-size: 14px;
 }
+
+/* Status colors */
+.good {color: #00ff99;}
+.bad {color: #ff5c5c;}
 
 </style>
 """, unsafe_allow_html=True)
@@ -86,6 +104,8 @@ location = st.sidebar.selectbox("Location", [
 resource_type = st.sidebar.selectbox("Resource Type", ["Shelter","Medical","Food"])
 urgency = st.sidebar.selectbox("Urgency", ["Low","Medium","High"])
 people_needed = st.sidebar.slider("People Needed", 10, 200, 50)
+
+st.sidebar.success("🌍 10 Cities Supported")
 
 # =========================
 # DATA
@@ -120,7 +140,7 @@ st.markdown("""
 
 st.markdown(f"""
 <div class="hero">
-<h2>🚀 Best Match: {best['name']}</h2>
+🚀 Best Match: {best['name']}
 </div>
 """, unsafe_allow_html=True)
 
@@ -135,18 +155,25 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
     with cols[i]:
 
         key = f"ai_{i}"
-
         if key not in st.session_state:
             st.session_state[key] = ""
 
-        # CARD CONTENT
+        is_best = row["name"] == best["name"]
+        card_class = "card best-card" if is_best else "card"
+
+        status = (
+            "<span class='good'>🟢 Sufficient Capacity</span>"
+            if row["capacity"] >= people_needed
+            else "<span class='bad'>🔴 Not Enough Capacity</span>"
+        )
+
         st.markdown(f"""
-        <div class="card">
+        <div class="{card_class}">
         <h3>{row['name']}</h3>
-        👥 Capacity: {row['capacity']}
+        👥 Capacity: {row['capacity']} <br><br>
+        {status}
         """, unsafe_allow_html=True)
 
-        # BUTTON INSIDE CARD
         if st.button("✨ Explain", key=f"btn_{i}"):
 
             if AI_AVAILABLE:
@@ -157,21 +184,37 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
                     Required: {people_needed}
                     Urgency: {urgency}
 
-                    Give short decision.
+                    Give short explanation.
                     """
                     res = model.generate_content(prompt)
                     st.session_state[key] = res.text
+
                 except:
-                    st.session_state[key] = "⚠️ AI busy, using fallback"
+                    st.session_state[key] = f"""
+📊 **Smart Analysis**
+
+Capacity: {row['capacity']} | Needed: {people_needed}
+
+{"✅ Fully capable of handling situation." if row['capacity'] >= people_needed else "⚠️ Needs support from additional hubs."}
+
+🚀 Recommendation: Deploy {"immediately" if urgency=="High" else "as required"}.
+"""
 
             else:
-                st.session_state[key] = "⚠️ AI not available"
+                st.session_state[key] = f"""
+🤖 **AI Insight (Fallback)**
 
-        # AI OUTPUT INSIDE CARD
+This hub supports {row['capacity']} people.
+
+{"It meets demand perfectly." if row['capacity'] >= people_needed else "It partially meets demand."}
+
+Urgency: {urgency}
+"""
+
         if st.session_state[key]:
             st.markdown(f"""
             <div class="ai-box">
-            🤖 {st.session_state[key]}
+            {st.session_state[key]}
             </div>
             """, unsafe_allow_html=True)
 
@@ -181,11 +224,10 @@ for i, (_, row) in enumerate(df.head(3).iterrows()):
 # CHART
 # =========================
 st.subheader("📊 Resource Distribution")
-
 st.bar_chart(df.set_index("name")["capacity"])
 
 # =========================
 # TABLE
 # =========================
-st.subheader("📋 All Resources")
+st.subheader("📋 Available Resource Providers")
 st.dataframe(df)

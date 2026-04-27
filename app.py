@@ -13,20 +13,49 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 st.set_page_config(layout="wide", page_title="AI Disaster Resource Optimizer")
 
 # ----------------------------
-# 🎨 UI STYLE
+# 🎨 GLASS UI
 # ----------------------------
 st.markdown("""
 <style>
+.main {
+    background: linear-gradient(135deg, #0E1117, #1a1f2b);
+    color: white;
+}
+
+/* Glass Card */
+.card {
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(10px);
+    padding:20px;
+    border-radius:15px;
+    border:1px solid rgba(255,255,255,0.15);
+    margin-bottom:15px;
+}
+
+/* Header card */
 .hero {
-    background: #d1fae5;
-    padding: 20px;
-    border-radius: 12px;
+    background: rgba(0, 201, 167, 0.15);
+    backdrop-filter: blur(10px);
+    padding:25px;
+    border-radius:15px;
+    border:1px solid rgba(0,201,167,0.4);
+}
+
+/* Priority subtle text */
+.priority {
+    font-size: 16px;
+    opacity: 0.9;
+    margin-top:10px;
+}
+
+h1, h2, h3 {
+    color: #00C9A7;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ----------------------------
-# 📊 DATA
+# DATA
 # ----------------------------
 def get_data():
     cities = ["Bangalore","Mumbai","Delhi","Chennai","Hyderabad","Ahmedabad"]
@@ -47,70 +76,27 @@ def get_data():
 df = get_data()
 
 # ----------------------------
-# 🤖 AI FUNCTION
+# 🤖 AI
 # ----------------------------
-def get_ai_explanation(donor, people_needed):
+def get_ai_text(donor, people_needed):
     try:
-        prompt = f"""
-        Resource: {donor['name']}
-        Type: {donor['type']}
-        City: {donor['location']}
-        Capacity: {donor['capacity']}
-        Demand: {people_needed}
-
-        Explain suitability briefly.
-        """
-
+        prompt = f"{donor['name']} with capacity {donor['capacity']} for {people_needed} people."
         res = model.generate_content(prompt)
-
-        # ✅ AI WORKING
-        return f"""
-        <div style="
-            background:#e0f2fe;
-            padding:15px;
-            border-radius:10px;
-            border-left:5px solid #0284c7;
-        ">
-        🤖 <b>AI Insight:</b><br><br>
-        {res.text}
-        </div>
-        """
-
+        return res.text, True
     except:
-        # ⚠️ FALLBACK
-        return f"""
-        <div style="
-            background:#fef3c7;
-            padding:15px;
-            border-radius:10px;
-            border-left:5px solid #f59e0b;
-        ">
-        ⚠️ <b>AI temporarily unavailable (quota limit)</b><br><br>
-
-        <div style="
-            background:#f3f4f6;
-            padding:10px;
-            border-radius:8px;
-            color:black;
-        ">
-        📊 <b>Smart Suggestion:</b> {donor['name']} can support {donor['capacity']} people.<br><br>
-        ✅ <b>Recommendation:</b> Deploy based on capacity and location.
-        </div>
-        </div>
-        """
+        return None, False
 
 # ----------------------------
-# 🎯 SIDEBAR
+# SIDEBAR
 # ----------------------------
 st.sidebar.title("🎯 Disaster Input Panel")
 
 location = st.sidebar.selectbox("Location", df["location"].unique())
 resource_type = st.sidebar.selectbox("Resource Type", df["type"].unique())
-urgency = st.sidebar.selectbox("Urgency", ["Low","Medium","High"])
 people_needed = st.sidebar.slider("People Needed", 10,200,50)
 
 # ----------------------------
-# 🧠 FILTER + SCORE
+# FILTER
 # ----------------------------
 filtered = df[df["type"] == resource_type].copy()
 
@@ -119,38 +105,66 @@ def score(row):
     if row["location"] == location:
         s += 50
     s += min(row["capacity"], people_needed)
-    if urgency == "High":
-        s += 20
     return s
 
 filtered["score"] = filtered.apply(score, axis=1)
 sorted_df = filtered.sort_values(by="score", ascending=False)
 
+best = sorted_df.iloc[0]
+
 # ----------------------------
-# 🚨 HEADER
+# 🧠 AUTO PRIORITY
+# ----------------------------
+if people_needed > best["capacity"]:
+    priority = "🚨 HIGH PRIORITY – Demand exceeds capacity"
+elif people_needed > best["capacity"] * 0.7:
+    priority = "⚠️ MEDIUM PRIORITY – Limited resources"
+else:
+    priority = "✅ LOW PRIORITY – Situation under control"
+
+# ----------------------------
+# HEADER
 # ----------------------------
 st.title("🚨 AI Disaster Resource Optimizer")
-
-best = sorted_df.iloc[0]
 
 st.markdown(f"""
 <div class="hero">
 <h2>🚀 Best Match: {best['name']}</h2>
+<div class="priority">{priority}</div>
 </div>
 """, unsafe_allow_html=True)
 
 # ----------------------------
-# 🏆 OPTIONS
+# OPTIONS (GLASS CARDS ONLY)
 # ----------------------------
 st.subheader("🏆 Deployment Options")
 
 for _, row in sorted_df.head(3).iterrows():
-    st.write(f"### {row['name']}")
+    st.markdown(f"""
+    <div class="card">
+    <h3>{row['name']}</h3>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.progress(row["score"]/100)
 
     if st.button(f"Explain - {row['name']}"):
-        # ✅ THIS IS THE FIX
-        st.markdown(get_ai_explanation(row, people_needed), unsafe_allow_html=True)
+        ai_text, success = get_ai_text(row, people_needed)
+
+        if success:
+            st.markdown(f"""
+            <div class="card">
+            🤖 <b>AI Insight:</b><br><br>
+            {ai_text}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="card">
+            📊 <b>Smart Suggestion:</b> {row['name']} can support {row['capacity']} people.<br><br>
+            ✅ <b>Recommendation:</b> Deploy based on capacity and location.
+            </div>
+            """, unsafe_allow_html=True)
 
 # ----------------------------
 # 📊 CHART
@@ -158,18 +172,12 @@ for _, row in sorted_df.head(3).iterrows():
 st.subheader(f"📊 Resource Distribution in {location}")
 
 city_data = df[df["location"] == location]
+chart = city_data.groupby("type")["capacity"].sum()
 
-chart_data = (
-    city_data.groupby("type")["capacity"]
-    .sum()
-    .reset_index()
-    .set_index("type")
-)
-
-st.bar_chart(chart_data)
+st.bar_chart(chart)
 
 # ----------------------------
-# 📋 TABLE
+# TABLE
 # ----------------------------
-st.subheader("📋 Available Providers")
+st.subheader("📋 Available Resource Providers")
 st.dataframe(sorted_df)
